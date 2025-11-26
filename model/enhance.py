@@ -1,121 +1,3 @@
-# import os
-# import sys
-# import cv2
-# import numpy as np
-# import tensorflow as tf
-# import io
-
-# # Force UTF-8 output for logs
-# sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-
-# if len(sys.argv) < 3:
-#     print("Usage: python enhance.py <input_video> <output_temp_avi>")
-#     sys.exit(1)
-
-# input_path = sys.argv[1]
-# output_temp_avi = sys.argv[2]
-
-# print("🎞️ Input video:", input_path)
-
-# # -------------------------------
-# # Load FSRCNN model
-# # -------------------------------
-# model_path = os.path.join(os.path.dirname(__file__), "fsrcnn_x4.pb")
-# print("📦 Loading FSRCNN model:", model_path)
-
-# with tf.io.gfile.GFile(model_path, "rb") as f:
-#     graph_def = tf.compat.v1.GraphDef()
-#     graph_def.ParseFromString(f.read())
-
-# tf.compat.v1.reset_default_graph()
-# tf.import_graph_def(graph_def, name="")
-# graph = tf.compat.v1.get_default_graph()
-
-# input_tensor = graph.get_tensor_by_name("IteratorGetNext:0")
-# output_tensor = graph.get_tensor_by_name("NHWC_output:0")
-
-# print("✅ FSRCNN model loaded successfully.")
-
-# # -------------------------------
-# # Video setup
-# # -------------------------------
-# cap = cv2.VideoCapture(input_path)
-# if not cap.isOpened():
-#     print("❌ Failed to open video")
-#     sys.exit(1)
-
-# fps = cap.get(cv2.CAP_PROP_FPS)
-# print("FPS:", fps)
-# fourcc = cv2.VideoWriter_fourcc(*"MJPG")
-# out = None
-# frame_count = 0
-
-# # -------------------------------
-# # Enhanced Sharpen Function
-# # -------------------------------
-# def smart_sharpen(img):
-#     """Adaptive sharpen with contrast enhancement."""
-#     # Gaussian blur for base detail suppression
-#     blur = cv2.GaussianBlur(img, (0, 0), 2)
-#     # Unsharp mask (weighted)
-#     sharpened = cv2.addWeighted(img, 1.8, blur, -0.8, 0)
-    
-#     # Add mild local contrast
-#     gray = cv2.cvtColor(sharpened, cv2.COLOR_BGR2GRAY)
-#     contrast = cv2.addWeighted(sharpened, 1.2, cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR), -0.2, 0)
-    
-#     # Clip values to avoid noise blowout
-#     return np.clip(contrast, 0, 255).astype(np.uint8)
-
-# # -------------------------------
-# # Processing Loop
-# # -------------------------------
-# with tf.compat.v1.Session(graph=graph) as sess:
-#     while True:
-#         ret, frame = cap.read()
-#         if not ret:
-#             break
-
-#         # Step 1: Mild pre-sharpen
-#         frame = smart_sharpen(frame)
-
-#         # Step 2: Convert to YCrCb
-#         img = cv2.cvtColor(frame, cv2.COLOR_BGR2YCrCb)
-#         y, cr, cb = cv2.split(img)
-#         y = y / 255.0
-#         y = np.expand_dims(np.expand_dims(y.astype(np.float32), axis=0), axis=-1)
-
-#         # Step 3: FSRCNN Enhancement
-#         output_y = sess.run(output_tensor, feed_dict={"IteratorGetNext:0": y})
-#         output_y = np.squeeze(output_y)
-#         output_y = (output_y * 255).clip(0, 255).astype(np.uint8)
-
-#         # Step 4: Merge color channels
-#         output_ycrcb = cv2.merge([
-#             output_y,
-#             cv2.resize(cr, (output_y.shape[1], output_y.shape[0]), interpolation=cv2.INTER_CUBIC),
-#             cv2.resize(cb, (output_y.shape[1], output_y.shape[0]), interpolation=cv2.INTER_CUBIC)
-#         ])
-#         output_bgr = cv2.cvtColor(output_ycrcb, cv2.COLOR_YCrCb2BGR)
-
-#         # Step 5: Final adaptive sharpening (stronger clarity)
-#         output_bgr = smart_sharpen(output_bgr)
-
-#         if out is None:
-#             h, w = output_bgr.shape[:2]
-#             out = cv2.VideoWriter(output_temp_avi, fourcc, fps, (w, h))
-
-#         out.write(output_bgr)
-#         frame_count += 1
-
-# cap.release()
-# if out:
-#     out.release()
-
-# print("✅ Enhancement completed!")
-# print("Total frames processed:", frame_count)
-# print("📁 Output saved to:", output_temp_avi)
-# ....................................................................................abs
 import os
 import sys
 import cv2
@@ -123,7 +5,7 @@ import numpy as np
 import tensorflow as tf
 import io
 
-# Force UTF-8 output for logs
+# Force UTF-8 output
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 if len(sys.argv) < 3:
@@ -135,9 +17,8 @@ output_temp_avi = sys.argv[2]
 
 print("🎞️ Input video:", input_path)
 
-# -------------------------------
 # Load FSRCNN model
-# -------------------------------
+
 model_path = os.path.join(os.path.dirname(__file__), "fsrcnn_x4.pb")
 print("📦 Loading FSRCNN model:", model_path)
 
@@ -152,11 +33,10 @@ graph = tf.compat.v1.get_default_graph()
 input_tensor = graph.get_tensor_by_name("IteratorGetNext:0")
 output_tensor = graph.get_tensor_by_name("NHWC_output:0")
 
-print("✅ FSRCNN model loaded successfully.")
+print("✅ FSRCNN model loaded.")
 
-# -------------------------------
-# PSNR Function
-# -------------------------------
+# PSNR Calculation
+
 def calculate_psnr(original, enhanced):
     original = original.astype(np.float32)
     enhanced = enhanced.astype(np.float32)
@@ -170,9 +50,7 @@ def calculate_psnr(original, enhanced):
     PIXEL_MAX = 255.0
     return 20 * np.log10(PIXEL_MAX / np.sqrt(mse))
 
-# -------------------------------
-# Video setup
-# -------------------------------
+
 cap = cv2.VideoCapture(input_path)
 if not cap.isOpened():
     print("❌ Failed to open video")
@@ -182,12 +60,9 @@ fps = cap.get(cv2.CAP_PROP_FPS)
 fourcc = cv2.VideoWriter_fourcc(*"MJPG")
 out = None
 
-frame_count = 0
 psnr_values = []
 
-# -------------------------------
-# Enhanced Sharpen Function
-# -------------------------------
+
 def smart_sharpen(img):
     blur = cv2.GaussianBlur(img, (0, 0), 2)
     sharpened = cv2.addWeighted(img, 1.8, blur, -0.8, 0)
@@ -195,9 +70,10 @@ def smart_sharpen(img):
     contrast = cv2.addWeighted(sharpened, 1.2, cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR), -0.2, 0)
     return np.clip(contrast, 0, 255).astype(np.uint8)
 
-# -------------------------------
-# Processing Loop
-# -------------------------------
+# FSRCNN Enhance Loop
+
+frame_count = 0
+
 with tf.compat.v1.Session(graph=graph) as sess:
     while True:
         ret, frame = cap.read()
@@ -206,42 +82,35 @@ with tf.compat.v1.Session(graph=graph) as sess:
 
         original_frame = frame.copy()
 
-        # Sharpen
         frame = smart_sharpen(frame)
 
-        # Y channel
         img = cv2.cvtColor(frame, cv2.COLOR_BGR2YCrCb)
         y, cr, cb = cv2.split(img)
         y = y / 255.0
         y = np.expand_dims(np.expand_dims(y.astype(np.float32), axis=0), axis=-1)
 
-        # FSRCNN
         output_y = sess.run(output_tensor, feed_dict={"IteratorGetNext:0": y})
         output_y = np.squeeze(output_y)
         output_y = (output_y * 255).clip(0, 255).astype(np.uint8)
 
-        # Merge channels
         output_ycrcb = cv2.merge([
             output_y,
-            cv2.resize(cr, (output_y.shape[1], output_y.shape[0]), interpolation=cv2.INTER_CUBIC),
-            cv2.resize(cb, (output_y.shape[1], output_y.shape[0]), interpolation=cv2.INTER_CUBIC)
+            cv2.resize(cr, (output_y.shape[1], output_y.shape[0])),
+            cv2.resize(cb, (output_y.shape[1], output_y.shape[0]))
         ])
         output_bgr = cv2.cvtColor(output_ycrcb, cv2.COLOR_YCrCb2BGR)
 
-        # Sharpen again
         output_bgr = smart_sharpen(output_bgr)
 
-        # Writer init
         if out is None:
             h, w = output_bgr.shape[:2]
             out = cv2.VideoWriter(output_temp_avi, fourcc, fps, (w, h))
 
-        # ✅ Calculate PSNR
         original_resized = cv2.resize(original_frame, (w, h))
         psnr_val = calculate_psnr(original_resized, output_bgr)
         psnr_values.append(psnr_val)
 
-        # ✅ Add PSNR text ON the video frame
+        # Draw PSNR on video
         text = f"PSNR: {psnr_val:.2f} dB"
         cv2.putText(output_bgr, text, (10, 40),
                     cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2)
@@ -253,33 +122,16 @@ cap.release()
 if out:
     out.release()
 
-# Final PSNR
+psnr_file = os.path.join(os.path.dirname(__file__), "psnr.txt")
+
 if len(psnr_values) > 0:
     avg_psnr = sum(psnr_values) / len(psnr_values)
-    print(f"✅ Enhancement completed!")
-    print(f"📊 Average PSNR: {avg_psnr:.2f} dB")
+    with open(psnr_file, "w") as f:
+        f.write(f"{avg_psnr:.2f}")
+    print("📊 Average PSNR:", avg_psnr)
 else:
+    with open(psnr_file, "w") as f:
+        f.write("0")
     print("⚠ No PSNR values calculated")
 
-print("Total frames processed:", frame_count)
 print("📁 Output saved to:", output_temp_avi)
-
-
-
-
-
-
-
-    
-
-
-
-
-
-
-
-
-
-
-
-
